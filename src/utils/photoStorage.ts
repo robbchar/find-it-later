@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 const PHOTOS_DIR = `${FileSystem.documentDirectory}photos/`;
 
