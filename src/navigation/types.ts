@@ -3,5 +3,3 @@ export type RootStackParamList = {
   Capture: undefined;
   Detail: { itemId: string };
 };
-
-
