@@ -1,7 +1,7 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
-import { HomeScreen } from "../HomeScreen";
+import { HomeScreen } from "./HomeScreen";
 
 jest.mock("@react-navigation/native", () => {
   const actual = jest.requireActual("@react-navigation/native");
@@ -18,12 +18,12 @@ jest.mock("@react-navigation/native", () => {
   };
 });
 
-jest.mock("../../storage/items", () => ({
+jest.mock("../storage/items", () => ({
   listItems: jest.fn(),
   deleteItem: jest.fn(),
 }));
 
-const { listItems, deleteItem } = jest.requireMock("../../storage/items");
+const { listItems, deleteItem } = jest.requireMock("../storage/items");
 
 const navigationMock = {
   navigate: jest.fn(),

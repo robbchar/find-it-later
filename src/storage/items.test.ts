@@ -1,6 +1,6 @@
-import { clearItems, deleteItem, getItem, listItems, updateItem } from "../items";
+import { clearItems, deleteItem, getItem, listItems, updateItem } from "./items";
 
-jest.mock("../db", () => {
+jest.mock("./db", () => {
   const mockDb = {
     runAsync: jest.fn(),
     getAllAsync: jest.fn(),
@@ -9,12 +9,12 @@ jest.mock("../db", () => {
   return { getDb: jest.fn().mockResolvedValue(mockDb), __mockDb: mockDb };
 });
 
-jest.mock("../../utils/photoStorage", () => ({
+jest.mock("../utils/photoStorage", () => ({
   deletePhoto: jest.fn().mockResolvedValue(undefined),
 }));
 
-const { __mockDb: mockDb } = jest.requireMock("../db");
-const { deletePhoto } = jest.requireMock("../../utils/photoStorage");
+const { __mockDb: mockDb } = jest.requireMock("./db");
+const { deletePhoto } = jest.requireMock("../utils/photoStorage");
 
 describe("storage/items", () => {
   beforeEach(() => {

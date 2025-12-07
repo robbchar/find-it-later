@@ -1,15 +1,15 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
-import { DetailScreen } from "../DetailScreen";
+import { DetailScreen } from "./DetailScreen";
 
-jest.mock("../../storage/items", () => ({
+jest.mock("../storage/items", () => ({
   getItem: jest.fn(),
   updateItem: jest.fn(),
   deleteItem: jest.fn(),
 }));
 
-const { getItem, updateItem, deleteItem } = jest.requireMock("../../storage/items");
+const { getItem, updateItem, deleteItem } = jest.requireMock("../storage/items");
 
 const navigationMock = {
   goBack: jest.fn(),
