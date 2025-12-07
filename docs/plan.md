@@ -143,6 +143,7 @@ type Item = {
 - “Projects”/tags.
 - Export/backup.
 - On‑device ML “suggest label from photo.”
+- More precise indoor/house-level mapping (e.g., refine pin within home).
 
 ### Testing approach
 

@@ -1,5 +1,6 @@
 import { getDb } from "./db";
 import type { Item, ItemLocation } from "../models/Item";
+import { deletePhoto } from "../utils/photoStorage";
 
 type ItemRow = {
   id: string;
@@ -36,6 +37,21 @@ export async function insertItem(item: Omit<Item, "location">): Promise<void> {
   );
 }
 
+export async function getItem(id: string): Promise<Item | null> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<ItemRow>(`SELECT * FROM items WHERE id = ?`, [id]);
+  return row ? rowToItem(row) : null;
+}
+
+export async function updateItem(item: Pick<Item, "id" | "label" | "note">): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(`UPDATE items SET label = ?, note = ? WHERE id = ?`, [
+    item.label,
+    item.note ?? null,
+    item.id,
+  ]);
+}
+
 export async function updateItemLocation(itemId: string, location: ItemLocation): Promise<void> {
   const db = await getDb();
   await db.runAsync(`UPDATE items SET lat = ?, lon = ?, accuracy = ? WHERE id = ?`, [
@@ -53,4 +69,25 @@ export async function listItems(limit = 100): Promise<Item[]> {
     [limit],
   );
   return rows.map(rowToItem);
+}
+
+export async function deleteItem(id: string): Promise<void> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ photo_uri: string | null }>(
+    `SELECT photo_uri FROM items WHERE id = ?`,
+    [id],
+  );
+  if (row?.photo_uri) {
+    await deletePhoto(row.photo_uri);
+  }
+  await db.runAsync(`DELETE FROM items WHERE id = ?`, [id]);
+}
+
+export async function clearItems(): Promise<void> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ photo_uri: string | null }>(`SELECT photo_uri FROM items`);
+  await Promise.all(
+    rows.map((row) => (row.photo_uri ? deletePhoto(row.photo_uri) : Promise.resolve())),
+  );
+  await db.runAsync(`DELETE FROM items`);
 }
