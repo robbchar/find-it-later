@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import "react-native-get-random-values";
 import { v4 as uuidv4 } from "uuid";
 
 import type { RootStackParamList } from "../navigation/types";
@@ -99,9 +100,10 @@ export function CaptureScreen({ navigation }: Props) {
       setNote("");
       await promptForLocation(id);
       navigation.goBack();
-    } catch {
+    } catch (error) {
       setSaving(false);
       Alert.alert("Save failed", "Could not save this item. Please try again.");
+      console.error(error);
     }
   }, [capturedUri, label, note, navigation, promptForLocation]);
 
