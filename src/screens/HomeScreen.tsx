@@ -22,6 +22,7 @@ import type { Room } from "../models/Room";
 import type { RootStackParamList } from "../navigation/types";
 import { deleteItem, listItems, searchItems } from "../storage/items";
 import { createRoom, deleteRoom, listRooms, renameRoom } from "../storage/rooms";
+import { colors, spacing, typography } from "../theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
@@ -362,13 +363,13 @@ const styles = StyleSheet.create({
   thumbnail: { width: 72, height: 72, borderRadius: 8, backgroundColor: "#ddd" },
   cardBody: { flex: 1, gap: 4 },
   label: { fontSize: 16, fontWeight: "600" },
-  meta: { fontSize: 14, color: "#555" },
+  meta: typography.body,
   badge: {
     alignSelf: "flex-start",
-    backgroundColor: "#e7f0ff",
-    color: "#1a73e8",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: colors.badgeLocationBg,
+    color: colors.badgeLocationText,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
     borderRadius: 6,
     fontSize: 12,
   },
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     width: 80,
-    backgroundColor: "#e53935",
+    backgroundColor: colors.badgeDeleteBg,
     marginVertical: 6,
     borderRadius: 12,
   },
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 20, fontWeight: "700" },
   emptyBody: { fontSize: 16, color: "#555", textAlign: "center" },
   primaryButton: {
-    backgroundColor: "#1a73e8",
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -399,7 +400,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "#1a73e8",
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -415,14 +416,14 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     textAlign: "center",
-    color: "#c62828",
+    color: colors.error,
   },
   badgeRoom: {
     alignSelf: "flex-start",
-    backgroundColor: "#f1f8e9",
-    color: "#558b2f",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: colors.badgeRoomBg,
+    color: colors.badgeRoomText,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
     borderRadius: 6,
     fontSize: 12,
   },

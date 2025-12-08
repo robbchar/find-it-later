@@ -12,6 +12,7 @@ import {
 } from "react-native";
 
 import type { Room } from "../models/Room";
+import { colors, spacing, typography } from "../theme";
 
 type Props = {
   visible: boolean;
@@ -214,8 +215,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: "white",
-    padding: 16,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     maxHeight: "80%",
@@ -224,11 +225,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: spacing.sm + 4,
   },
   sheetTitle: { fontSize: 18, fontWeight: "700" },
-  closeText: { color: "#1a73e8", fontWeight: "600" },
-  roomRow: { paddingVertical: 8, borderBottomColor: "#eee", borderBottomWidth: 1, gap: 6 },
+  closeText: { color: colors.primary, fontWeight: "600" },
+  roomRow: {
+    paddingVertical: spacing.sm,
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    gap: 6,
+  },
   roomPressable: { flexDirection: "row", alignItems: "center", gap: 8 },
   radio: {
     width: 18,
@@ -238,33 +244,33 @@ const styles = StyleSheet.create({
     borderColor: "#888",
   },
   radioSelected: { backgroundColor: "#1a73e8", borderColor: "#1a73e8" },
-  roomName: { fontSize: 16, fontWeight: "600" },
+  roomName: typography.label,
   roomInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.md - 2,
+    paddingVertical: spacing.sm,
     fontSize: 16,
   },
   rowActions: { flexDirection: "row", gap: 12, paddingLeft: 26 },
-  actionText: { color: "#1a73e8", fontWeight: "600" },
-  deleteText: { color: "#e53935" },
+  actionText: { color: colors.primary, fontWeight: "600" },
+  deleteText: { color: colors.badgeDeleteBg },
   addRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 },
   addInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.md - 2,
+    paddingVertical: spacing.sm,
     fontSize: 16,
   },
   addButton: {
-    backgroundColor: "#1a73e8",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
     borderRadius: 8,
   },
   addButtonText: { color: "white", fontWeight: "700" },
