@@ -11,6 +11,8 @@ type ItemRow = {
   lat: number | null;
   lon: number | null;
   accuracy: number | null;
+  room_id: string | null;
+  room_name?: string | null;
 };
 
 function rowToItem(row: ItemRow): Item {
@@ -26,28 +28,36 @@ function rowToItem(row: ItemRow): Item {
     photoUri: row.photo_uri,
     createdAt: row.created_at,
     location,
+    roomId: row.room_id ?? undefined,
+    roomName: row.room_name ?? undefined,
   };
 }
 
 export async function insertItem(item: Omit<Item, "location">): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    `INSERT INTO items (id, label, note, photo_uri, created_at) VALUES (?, ?, ?, ?, ?)`,
-    [item.id, item.label, item.note ?? null, item.photoUri, item.createdAt],
+    `INSERT INTO items (id, label, note, photo_uri, created_at, room_id) VALUES (?, ?, ?, ?, ?, ?)`,
+    [item.id, item.label, item.note ?? null, item.photoUri, item.createdAt, item.roomId ?? null],
   );
 }
 
 export async function getItem(id: string): Promise<Item | null> {
   const db = await getDb();
-  const row = await db.getFirstAsync<ItemRow>(`SELECT * FROM items WHERE id = ?`, [id]);
+  const row = await db.getFirstAsync<ItemRow>(
+    `SELECT items.*, rooms.name as room_name FROM items LEFT JOIN rooms ON items.room_id = rooms.id WHERE items.id = ?`,
+    [id],
+  );
   return row ? rowToItem(row) : null;
 }
 
-export async function updateItem(item: Pick<Item, "id" | "label" | "note">): Promise<void> {
+export async function updateItem(
+  item: Pick<Item, "id" | "label" | "note" | "roomId">,
+): Promise<void> {
   const db = await getDb();
-  await db.runAsync(`UPDATE items SET label = ?, note = ? WHERE id = ?`, [
+  await db.runAsync(`UPDATE items SET label = ?, note = ?, room_id = ? WHERE id = ?`, [
     item.label,
     item.note ?? null,
+    item.roomId ?? null,
     item.id,
   ]);
 }
@@ -62,26 +72,36 @@ export async function updateItemLocation(itemId: string, location: ItemLocation)
   ]);
 }
 
-export async function listItems(limit = 100): Promise<Item[]> {
+export async function listItems(limit = 100, roomId?: string): Promise<Item[]> {
   const db = await getDb();
   const rows = await db.getAllAsync<ItemRow>(
-    `SELECT * FROM items ORDER BY created_at DESC LIMIT ?`,
-    [limit],
+    `
+      SELECT items.*, rooms.name as room_name
+      FROM items
+      LEFT JOIN rooms ON items.room_id = rooms.id
+      WHERE (? IS NULL OR items.room_id = ?)
+      ORDER BY created_at DESC
+      LIMIT ?
+    `,
+    [roomId ?? null, roomId ?? null, limit],
   );
   return rows.map(rowToItem);
 }
 
-export async function searchItems(term: string, limit = 100): Promise<Item[]> {
+export async function searchItems(term: string, limit = 100, roomId?: string): Promise<Item[]> {
   const db = await getDb();
   const q = `%${term.toLowerCase()}%`;
   const rows = await db.getAllAsync<ItemRow>(
     `
-      SELECT * FROM items
-      WHERE lower(label) LIKE ? OR lower(COALESCE(note, '')) LIKE ?
+      SELECT items.*, rooms.name as room_name
+      FROM items
+      LEFT JOIN rooms ON items.room_id = rooms.id
+      WHERE (lower(items.label) LIKE ? OR lower(COALESCE(items.note, '')) LIKE ?)
+        AND (? IS NULL OR items.room_id = ?)
       ORDER BY created_at DESC
       LIMIT ?
     `,
-    [q, q, limit],
+    [q, q, roomId ?? null, roomId ?? null, limit],
   );
   return rows.map(rowToItem);
 }

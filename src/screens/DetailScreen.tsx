@@ -16,9 +16,12 @@ import {
   View,
 } from "react-native";
 
+import { RoomPickerModal } from "../components/RoomPickerModal";
 import type { Item } from "../models/Item";
+import type { Room } from "../models/Room";
 import type { RootStackParamList } from "../navigation/types";
 import { deleteItem, getItem, updateItem } from "../storage/items";
+import { createRoom, deleteRoom, listRooms, renameRoom } from "../storage/rooms";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Detail">;
 
@@ -58,6 +61,9 @@ export function DetailScreen({ route, navigation }: Props) {
   const [saving, setSaving] = useState(false);
   const [label, setLabel] = useState("");
   const [note, setNote] = useState("");
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [roomPickerVisible, setRoomPickerVisible] = useState(false);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const originalLabel = useRef("");
   const originalNote = useRef("");
   const ignoreUnsaved = useRef(false);
@@ -73,6 +79,10 @@ export function DetailScreen({ route, navigation }: Props) {
         setNote(record?.note ?? "");
         originalLabel.current = record?.label?.trim() ?? "";
         originalNote.current = record?.note?.trim() ?? "";
+        const roomId = record?.roomId ?? null;
+        setSelectedRoomId(roomId);
+        const allRooms = await listRooms();
+        setRooms(allRooms);
       } catch (err) {
         console.error(err);
         setLoadingError("Could not load item");
@@ -84,7 +94,9 @@ export function DetailScreen({ route, navigation }: Props) {
   }, [itemId]);
 
   const hasUnsavedChanges =
-    label.trim() !== originalLabel.current || (note.trim() || "") !== (originalNote.current || "");
+    label.trim() !== originalLabel.current ||
+    (note.trim() || "") !== (originalNote.current || "") ||
+    selectedRoomId !== (item?.roomId ?? null);
 
   const confirmDiscard = useCallback((onDiscard: () => void) => {
     Alert.alert("Discard changes?", "You have unsaved edits.", [
@@ -153,12 +165,19 @@ export function DetailScreen({ route, navigation }: Props) {
     if (!item) return;
     setSaving(true);
     try {
-      await updateItem({ id: item.id, label: label.trim(), note: note.trim() || undefined });
+      await updateItem({
+        id: item.id,
+        label: label.trim(),
+        note: note.trim() || undefined,
+        roomId: selectedRoomId ?? undefined,
+      });
       const refreshed = await getItem(item.id);
       setItem(refreshed);
       originalLabel.current = label.trim();
       originalNote.current = note.trim();
+      setSelectedRoomId(refreshed?.roomId ?? null);
       Alert.alert("Saved", "Item updated.");
+      navigation.navigate("Home");
     } catch (error) {
       console.error(error);
       Alert.alert("Save failed", "Could not save changes.");
@@ -231,6 +250,25 @@ export function DetailScreen({ route, navigation }: Props) {
         />
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.label}>Room</Text>
+        <TouchableOpacity
+          style={styles.roomSelector}
+          onPress={() => {
+            setRoomPickerVisible(true);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Select room"
+        >
+          <Text style={styles.roomSelectorLabel}>
+            {selectedRoomId
+              ? (rooms.find((r) => r.id === selectedRoomId)?.name ?? "Room")
+              : "No room selected"}
+          </Text>
+          <Text style={styles.roomSelectorAction}>Change</Text>
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.meta}>Created {formatTimestamp(item.createdAt)}</Text>
 
       {item.location ? (
@@ -268,6 +306,23 @@ export function DetailScreen({ route, navigation }: Props) {
           <Text style={styles.deleteButtonText}>Delete</Text>
         </TouchableOpacity>
       </View>
+
+      <RoomPickerModal
+        visible={roomPickerVisible}
+        rooms={rooms}
+        selectedRoomId={selectedRoomId}
+        onSelect={(id) => {
+          setSelectedRoomId(id);
+          setRoomPickerVisible(false);
+        }}
+        onCreate={async () => {}}
+        onRename={async () => {}}
+        onDelete={async () => {}}
+        onRequestClose={() => {
+          setRoomPickerVisible(false);
+        }}
+        allowManage={false}
+      />
     </ScrollView>
   );
 }
@@ -289,6 +344,18 @@ const styles = StyleSheet.create({
   },
   multiline: { minHeight: 80, textAlignVertical: "top" },
   meta: { fontSize: 14, color: "#555" },
+  roomSelector: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  roomSelectorLabel: { fontSize: 16, color: "#333" },
+  roomSelectorAction: { color: "#1a73e8", fontWeight: "600" },
   locationCard: {
     backgroundColor: "white",
     padding: 12,

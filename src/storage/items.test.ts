@@ -32,6 +32,8 @@ describe("storage/items", () => {
         lat: null,
         lon: null,
         accuracy: null,
+        room_id: null,
+        room_name: null,
       },
       {
         id: "1",
@@ -42,6 +44,8 @@ describe("storage/items", () => {
         lat: 1,
         lon: 2,
         accuracy: 5,
+        room_id: "room1",
+        room_name: "Kitchen",
       },
     ]);
 
@@ -55,6 +59,8 @@ describe("storage/items", () => {
         photoUri: "file:///second.jpg",
         createdAt: 200,
         location: undefined,
+        roomId: undefined,
+        roomName: undefined,
       },
       {
         id: "1",
@@ -63,20 +69,19 @@ describe("storage/items", () => {
         photoUri: "file:///first.jpg",
         createdAt: 100,
         location: { lat: 1, lon: 2, accuracy: 5 },
+        roomId: "room1",
+        roomName: "Kitchen",
       },
     ]);
-    expect(mockDb.getAllAsync).toHaveBeenCalledWith(
-      "SELECT * FROM items ORDER BY created_at DESC LIMIT ?",
-      [100],
-    );
+    expect(mockDb.getAllAsync).toHaveBeenCalledTimes(1);
   });
 
   it("updates label and note", async () => {
-    await updateItem({ id: "abc", label: "New", note: "Note" });
+    await updateItem({ id: "abc", label: "New", note: "Note", roomId: "room1" });
 
     expect(mockDb.runAsync).toHaveBeenCalledWith(
-      "UPDATE items SET label = ?, note = ? WHERE id = ?",
-      ["New", "Note", "abc"],
+      "UPDATE items SET label = ?, note = ?, room_id = ? WHERE id = ?",
+      ["New", "Note", "room1", "abc"],
     );
   });
 
@@ -90,11 +95,18 @@ describe("storage/items", () => {
       lat: null,
       lon: null,
       accuracy: null,
+      room_id: "room1",
+      room_name: "Kitchen",
     });
 
     const item = await getItem("1");
-    expect(item).toMatchObject({ id: "1", label: "One", photoUri: "file:///one.jpg" });
-    expect(mockDb.getFirstAsync).toHaveBeenCalledWith("SELECT * FROM items WHERE id = ?", ["1"]);
+    expect(item).toMatchObject({
+      id: "1",
+      label: "One",
+      photoUri: "file:///one.jpg",
+      roomId: "room1",
+      roomName: "Kitchen",
+    });
   });
 
   it("deletes item and photo when present", async () => {

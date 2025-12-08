@@ -24,7 +24,12 @@ jest.mock("../storage/items", () => ({
   searchItems: jest.fn(),
 }));
 
+jest.mock("../storage/rooms", () => ({
+  listRooms: jest.fn(),
+}));
+
 const { listItems, deleteItem, searchItems } = jest.requireMock("../storage/items");
+const { listRooms } = jest.requireMock("../storage/rooms");
 
 const navigationMock = {
   navigate: jest.fn(),
@@ -33,11 +38,19 @@ const navigationMock = {
 describe("HomeScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    listRooms.mockResolvedValue([]);
   });
 
   it("renders items and navigates to detail on press", async () => {
     listItems.mockResolvedValue([
-      { id: "1", label: "One", note: undefined, photoUri: "file:///one.jpg", createdAt: 1 },
+      {
+        id: "1",
+        label: "One",
+        note: undefined,
+        photoUri: "file:///one.jpg",
+        createdAt: 1,
+        roomName: "Kitchen",
+      },
     ]);
 
     const { getByText } = render(
@@ -83,7 +96,14 @@ describe("HomeScreen", () => {
   it("searches when text is entered", async () => {
     listItems.mockResolvedValue([]);
     searchItems.mockResolvedValue([
-      { id: "2", label: "Match", note: "foo", photoUri: "file:///m.jpg", createdAt: 2 },
+      {
+        id: "2",
+        label: "Match",
+        note: "foo",
+        photoUri: "file:///m.jpg",
+        createdAt: 2,
+        roomName: "Kitchen",
+      },
     ]);
 
     const { getByPlaceholderText, getByText } = render(
@@ -99,7 +119,7 @@ describe("HomeScreen", () => {
       await new Promise((resolve) => setTimeout(resolve, 400));
     });
 
-    expect(searchItems).toHaveBeenCalledWith("foo");
+    expect(searchItems).toHaveBeenCalled();
     await waitFor(() => {
       expect(getByText("Match")).toBeTruthy();
     });

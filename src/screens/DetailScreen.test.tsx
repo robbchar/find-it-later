@@ -9,12 +9,21 @@ jest.mock("../storage/items", () => ({
   deleteItem: jest.fn(),
 }));
 
+jest.mock("../storage/rooms", () => ({
+  listRooms: jest.fn(),
+  createRoom: jest.fn(),
+  renameRoom: jest.fn(),
+  deleteRoom: jest.fn(),
+}));
+
 const { getItem, updateItem, deleteItem } = jest.requireMock("../storage/items");
+const { listRooms } = jest.requireMock("../storage/rooms");
 
 const navigationMock = {
   goBack: jest.fn(),
   dispatch: jest.fn(),
   setOptions: jest.fn(),
+  navigate: jest.fn(),
 } as any;
 
 jest.mock("@react-navigation/native", () => {
@@ -36,12 +45,15 @@ const baseItem = {
   photoUri: "file:///one.jpg",
   createdAt: 1,
   location: { lat: 1, lon: 2, accuracy: 10 },
+  roomId: "room1",
+  roomName: "Kitchen",
 };
 
 describe("DetailScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.EXPO_PUBLIC_GOOGLE_MAPS_STATIC_KEY = "";
+    listRooms.mockResolvedValue([{ id: "room1", name: "Kitchen", sort: 1 }]);
   });
 
   it("renders item info and location fallback when no map key", async () => {
@@ -80,7 +92,12 @@ describe("DetailScreen", () => {
     fireEvent.press(getByText("Save changes"));
 
     await waitFor(() => {
-      expect(updateItem).toHaveBeenCalledWith({ id: "1", label: "Updated", note: "Note2" });
+      expect(updateItem).toHaveBeenCalledWith({
+        id: "1",
+        label: "Updated",
+        note: "Note2",
+        roomId: "room1",
+      });
     });
   });
 
