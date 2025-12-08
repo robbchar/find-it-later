@@ -61,7 +61,7 @@ export function RoomPickerModal({
     try {
       await onCreate(newName.trim());
       setNewName("");
-    } catch {
+    } catch (err) {
       Alert.alert("Room name exists", "Choose a different room name.");
     } finally {
       setBusy(false);
@@ -121,7 +121,7 @@ export function RoomPickerModal({
                   await onRename(item.id, renameValue.trim());
                   setRenamingId(null);
                   setRenameValue("");
-                } catch {
+                } catch (err) {
                   Alert.alert("Room name exists", "Choose a different room name.");
                 } finally {
                   setBusy(false);
