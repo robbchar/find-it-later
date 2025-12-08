@@ -21,7 +21,7 @@ import type { Item } from "../models/Item";
 import type { Room } from "../models/Room";
 import type { RootStackParamList } from "../navigation/types";
 import { deleteItem, getItem, updateItem } from "../storage/items";
-import { createRoom, deleteRoom, listRooms, renameRoom } from "../storage/rooms";
+import { listRooms } from "../storage/rooms";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Detail">;
 
