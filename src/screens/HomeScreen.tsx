@@ -16,9 +16,12 @@ import {
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 
+import { RoomPickerModal } from "../components/RoomPickerModal";
 import type { Item } from "../models/Item";
+import type { Room } from "../models/Room";
 import type { RootStackParamList } from "../navigation/types";
 import { deleteItem, listItems, searchItems } from "../storage/items";
+import { createRoom, deleteRoom, listRooms, renameRoom } from "../storage/rooms";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
@@ -38,31 +41,53 @@ export function HomeScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [roomFilter, setRoomFilter] = useState<string | null>(null);
+  const [roomPickerVisible, setRoomPickerVisible] = useState(false);
+  const [manageRoomsVisible, setManageRoomsVisible] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadItems = useCallback(async (term = "", opts?: { showSpinner?: boolean }) => {
-    if (opts?.showSpinner !== false) {
-      setLoading(true);
-    }
+  const loadRooms = useCallback(async () => {
     try {
-      setError(null);
-      const rows = term.trim() ? await searchItems(term.trim()) : await listItems();
-      setItems(rows);
+      const data = await listRooms();
+      setRooms(data);
+      if (roomFilter && !data.find((r) => r.id === roomFilter)) {
+        setRoomFilter(null);
+      }
     } catch (err) {
       console.error(err);
-      setError("Could not load items.");
-      Alert.alert("Load failed", "Could not load items. Pull to retry.");
-    } finally {
-      if (opts?.showSpinner !== false) {
-        setLoading(false);
-      }
     }
-  }, []);
+  }, [roomFilter]);
+
+  const loadItems = useCallback(
+    async (term = "", opts?: { showSpinner?: boolean }) => {
+      if (opts?.showSpinner !== false) {
+        setLoading(true);
+      }
+      try {
+        setError(null);
+        const rows = term.trim()
+          ? await searchItems(term.trim(), 100, roomFilter ?? undefined)
+          : await listItems(100, roomFilter ?? undefined);
+        setItems(rows);
+      } catch (err) {
+        console.error(err);
+        setError("Could not load items.");
+        Alert.alert("Load failed", "Could not load items. Pull to retry.");
+      } finally {
+        if (opts?.showSpinner !== false) {
+          setLoading(false);
+        }
+      }
+    },
+    [roomFilter],
+  );
 
   useFocusEffect(
     useCallback(() => {
+      loadRooms();
       loadItems(searchTerm, { showSpinner: true }).catch(() => {});
-    }, [loadItems, searchTerm]),
+    }, [loadItems, loadRooms, searchTerm]),
   );
 
   useEffect(() => {
@@ -125,6 +150,7 @@ export function HomeScreen({ navigation }: Props) {
               <Text style={styles.label}>{item.label || "No label"}</Text>
               <Text style={styles.meta}>{formatTimestamp(item.createdAt)}</Text>
               {item.location ? <Text style={styles.badge}>Location</Text> : null}
+              {item.roomName ? <Text style={styles.badgeRoom}>{item.roomName}</Text> : null}
             </View>
           </Pressable>
         </Swipeable>
@@ -136,7 +162,7 @@ export function HomeScreen({ navigation }: Props) {
   const listEmpty = useMemo(
     () => (
       <View style={styles.emptyState}>
-        <Text style={styles.emptyTitle}>No items yet</Text>
+        <Text style={styles.emptyTitle}>No items in this room</Text>
         <Text style={styles.emptyBody}>Save your first item to see it here.</Text>
         <TouchableOpacity
           style={styles.primaryButton}
@@ -175,6 +201,39 @@ export function HomeScreen({ navigation }: Props) {
           </TouchableOpacity>
         ) : null}
       </View>
+      <TouchableOpacity
+        style={styles.filterRow}
+        onPress={() => {
+          setRoomPickerVisible(true);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Filter by room"
+      >
+        <Text style={styles.filterLabel}>Room filter</Text>
+        <Text style={styles.filterValue}>
+          {roomFilter ? (rooms.find((r) => r.id === roomFilter)?.name ?? "Room") : "All rooms"}
+        </Text>
+      </TouchableOpacity>
+
+      {rooms.length === 0 ? (
+        <TouchableOpacity
+          style={styles.noRooms}
+          onPress={() => {
+            setManageRoomsVisible(true);
+          }}
+        >
+          <Text style={styles.noRoomsText}>No rooms yet. Edit them now?</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={styles.noRooms}
+          onPress={() => {
+            setManageRoomsVisible(true);
+          }}
+        >
+          <Text style={styles.noRoomsText}>Edit rooms</Text>
+        </TouchableOpacity>
+      )}
 
       {loading ? (
         <View style={styles.loading}>
@@ -192,6 +251,7 @@ export function HomeScreen({ navigation }: Props) {
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true);
+                await loadRooms();
                 await loadItems(searchTerm);
                 setRefreshing(false);
               }}
@@ -211,6 +271,56 @@ export function HomeScreen({ navigation }: Props) {
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      <RoomPickerModal
+        visible={roomPickerVisible}
+        rooms={[{ id: "all", name: "All rooms", sort: -1 }, ...rooms]}
+        selectedRoomId={roomFilter ?? "all"}
+        onSelect={(id) => {
+          if (id === "all") {
+            setRoomFilter(null);
+          } else {
+            setRoomFilter(id);
+          }
+          setRoomPickerVisible(false);
+          loadItems(searchTerm, { showSpinner: true }).catch(() => {});
+        }}
+        onCreate={async () => {}}
+        onRename={async () => {}}
+        onDelete={async () => {}}
+        onRequestClose={() => {
+          setRoomPickerVisible(false);
+        }}
+        allowManage={false}
+      />
+      <RoomPickerModal
+        visible={manageRoomsVisible}
+        rooms={rooms}
+        selectedRoomId={roomFilter}
+        onSelect={(id) => {
+          setRoomFilter(id);
+          setManageRoomsVisible(false);
+          loadItems(searchTerm, { showSpinner: true }).catch(() => {});
+        }}
+        onCreate={async (name) => {
+          await createRoom(name);
+          await loadRooms();
+          await loadItems(searchTerm, { showSpinner: true });
+        }}
+        onRename={async (id, name) => {
+          await renameRoom(id, name);
+          await loadRooms();
+          await loadItems(searchTerm, { showSpinner: true });
+        }}
+        onDelete={async (id) => {
+          await deleteRoom(id);
+          await loadRooms();
+          if (roomFilter === id) setRoomFilter(null);
+          await loadItems(searchTerm, { showSpinner: true });
+        }}
+        onRequestClose={() => {
+          setManageRoomsVisible(false);
+        }}
+      />
     </View>
   );
 }
@@ -307,4 +417,53 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#c62828",
   },
+  badgeRoom: {
+    alignSelf: "flex-start",
+    backgroundColor: "#f1f8e9",
+    color: "#558b2f",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    fontSize: 12,
+  },
+  filterList: { maxHeight: 50 },
+  filterChip: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: "white",
+  },
+  filterChipSelected: {
+    backgroundColor: "#1a73e8",
+    borderColor: "#1a73e8",
+  },
+  filterChipText: { color: "#333", fontWeight: "600" },
+  filterChipTextSelected: { color: "white" },
+  filterRow: {
+    marginHorizontal: 12,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 10,
+    backgroundColor: "white",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  filterLabel: { fontSize: 14, color: "#555" },
+  filterValue: { fontSize: 16, fontWeight: "600" },
+  noRooms: {
+    marginHorizontal: 12,
+    marginBottom: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 10,
+    backgroundColor: "#fff9c4",
+  },
+  noRoomsText: { color: "#6d4c41", fontWeight: "600", textAlign: "center" },
 });

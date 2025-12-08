@@ -11,4 +11,6 @@ export type Item = {
   photoUri: string;
   createdAt: number;
   location?: ItemLocation;
+  roomId?: string;
+  roomName?: string;
 };

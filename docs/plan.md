@@ -137,7 +137,16 @@ type Item = {
 - Validate real‑device camera/location + edge cases.
 - **Commit “device‑testing fixes.”**
 
-**Phase 5 — Stretch (only if still motivated)**
+**Phase 5 — Room tags (manual)**
+
+- Add a rooms table (id, name, sort) and attach `roomId` to items (nullable).
+- Capture/edit: pick a room from a quick list; allow adding/renaming rooms.
+- List/search: show room label; filter by room; search remains text-based.
+- Detail: edit room; deleting a room should offer “reassign to Unassigned.”
+- Debug: expose room CRUD in dev helper.
+- **Commit.**
+
+**Phase 6 — Stretch (only if still motivated)**
 
 - Reverse geocoding for readable place names.
 - “Projects”/tags.
