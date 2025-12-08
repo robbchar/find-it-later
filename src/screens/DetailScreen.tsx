@@ -1,7 +1,7 @@
 import { HeaderBackButton } from "@react-navigation/elements";
-import { usePreventRemove, StackActions, CommonActions } from "@react-navigation/native";
+import { StackActions, CommonActions, usePreventRemove } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +22,7 @@ import type { Room } from "../models/Room";
 import type { RootStackParamList } from "../navigation/types";
 import { deleteItem, getItem, updateItem } from "../storage/items";
 import { listRooms } from "../storage/rooms";
+import { colors, spacing, typography } from "../theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Detail">;
 
@@ -335,21 +336,21 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: "600", color: "#333" },
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
     fontSize: 16,
-    backgroundColor: "white",
+    backgroundColor: colors.surface,
   },
   multiline: { minHeight: 80, textAlignVertical: "top" },
-  meta: { fontSize: 14, color: "#555" },
+  meta: typography.body,
   roomSelector: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -357,12 +358,12 @@ const styles = StyleSheet.create({
   roomSelectorLabel: { fontSize: 16, color: "#333" },
   roomSelectorAction: { color: "#1a73e8", fontWeight: "600" },
   locationCard: {
-    backgroundColor: "white",
-    padding: 12,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
     borderRadius: 10,
     gap: 6,
     borderWidth: 1,
-    borderColor: "#eee",
+    borderColor: colors.border,
   },
   locationTitle: { fontSize: 16, fontWeight: "700" },
   locationText: { fontSize: 15, color: "#333" },
