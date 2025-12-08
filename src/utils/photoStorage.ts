@@ -15,3 +15,11 @@ export async function persistPhoto(tempUri: string, filename: string): Promise<s
   await FileSystem.moveAsync({ from: tempUri, to: destUri });
   return destUri;
 }
+
+export async function deletePhoto(uri: string): Promise<void> {
+  try {
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+  } catch {
+    // Best-effort cleanup; ignore failures.
+  }
+}

@@ -1,26 +1,245 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Button,
+  Image,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
+import type { Item } from "../models/Item";
 import type { RootStackParamList } from "../navigation/types";
+import { deleteItem, getItem, updateItem } from "../storage/items";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Detail">;
 
-export function DetailScreen({ route }: Props) {
+function formatTimestamp(epochMs: number): string {
+  return new Date(epochMs).toLocaleString();
+}
+
+function formatAccuracy(accuracy?: number): string | null {
+  if (accuracy == null) return null;
+  return `Accuracy ~${Math.round(accuracy)}m`;
+}
+
+function buildStaticMapUrl(lat: number, lon: number, apiKey?: string): string | null {
+  if (!apiKey) return null;
+  const marker = `color:red|${lat},${lon}`;
+  const params = [
+    `center=${lat},${lon}`,
+    "zoom=18",
+    "size=640x360",
+    "maptype=roadmap",
+    `markers=${encodeURIComponent(marker)}`,
+    `key=${apiKey}`,
+  ];
+  return `https://maps.googleapis.com/maps/api/staticmap?${params.join("&")}`;
+}
+
+function openInMaps(lat: number, lon: number) {
+  const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+  Linking.openURL(url);
+}
+
+export function DetailScreen({ route, navigation }: Props) {
+  const { itemId } = route.params;
+  const [item, setItem] = useState<Item | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [label, setLabel] = useState("");
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    const load = async () => {
+      const record = await getItem(itemId);
+      setItem(record);
+      setLabel(record?.label ?? "");
+      setNote(record?.note ?? "");
+      setLoading(false);
+    };
+    load();
+  }, [itemId]);
+
+  const staticMapKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_STATIC_KEY;
+  const staticMapUrl = useMemo(
+    () =>
+      item?.location ? buildStaticMapUrl(item.location.lat, item.location.lon, staticMapKey) : null,
+    [item?.location, staticMapKey],
+  );
+
+  const handleSave = async () => {
+    if (!item) return;
+    setSaving(true);
+    try {
+      await updateItem({ id: item.id, label: label.trim(), note: note.trim() || undefined });
+      const refreshed = await getItem(item.id);
+      setItem(refreshed);
+      Alert.alert("Saved", "Item updated.");
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Save failed", "Could not save changes.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = () => {
+    Alert.alert("Delete item?", "This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          await deleteItem(itemId);
+          navigation.goBack();
+        },
+      },
+    ]);
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (!item) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.title}>Item not found</Text>
+        <Button
+          title="Go back"
+          onPress={() => {
+            navigation.goBack();
+          }}
+        />
+      </View>
+    );
+  }
+
+  const accuracyText = formatAccuracy(item.location?.accuracy);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Item Detail</Text>
-      <Text style={styles.body}>Placeholder for item id: {route.params.itemId}</Text>
-    </View>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Image source={{ uri: item.photoUri }} style={styles.photo} />
+
+      <View style={styles.section}>
+        <Text style={styles.label}>Label</Text>
+        <TextInput
+          value={label}
+          onChangeText={setLabel}
+          placeholder="Add a label"
+          style={styles.input}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.label}>Note</Text>
+        <TextInput
+          value={note}
+          onChangeText={setNote}
+          placeholder="Add a note"
+          style={[styles.input, styles.multiline]}
+          multiline
+        />
+      </View>
+
+      <Text style={styles.meta}>Created {formatTimestamp(item.createdAt)}</Text>
+
+      {item.location ? (
+        <View style={styles.locationCard}>
+          <Text style={styles.locationTitle}>Location</Text>
+          <Text style={styles.locationText}>
+            {item.location.lat.toFixed(5)}, {item.location.lon.toFixed(5)}
+          </Text>
+          {accuracyText ? <Text style={styles.locationMeta}>{accuracyText}</Text> : null}
+          {staticMapUrl ? (
+            <Image source={{ uri: staticMapUrl }} style={styles.mapImage} />
+          ) : (
+            <Text style={styles.mapFallback}>Map preview unavailable (no API key set).</Text>
+          )}
+          <TouchableOpacity
+            onPress={() => {
+              openInMaps(item.location!.lat, item.location!.lon);
+            }}
+            style={styles.linkButton}
+          >
+            <Text style={styles.linkButtonText}>Open in Maps</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <Text style={styles.meta}>No location attached.</Text>
+      )}
+
+      <View style={styles.actionsRow}>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
+          <Text style={styles.saveButtonText}>{saving ? "Saving..." : "Save changes"}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    gap: 12,
-    justifyContent: "center",
+  container: { padding: 16, gap: 16 },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
+  photo: { width: "100%", height: 260, borderRadius: 12, backgroundColor: "#ddd" },
+  section: { gap: 6 },
+  label: { fontSize: 14, fontWeight: "600", color: "#333" },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    backgroundColor: "white",
   },
+  multiline: { minHeight: 80, textAlignVertical: "top" },
+  meta: { fontSize: 14, color: "#555" },
+  locationCard: {
+    backgroundColor: "white",
+    padding: 12,
+    borderRadius: 10,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  locationTitle: { fontSize: 16, fontWeight: "700" },
+  locationText: { fontSize: 15, color: "#333" },
+  locationMeta: { fontSize: 13, color: "#555" },
+  mapImage: { width: "100%", height: 180, borderRadius: 8, backgroundColor: "#eee" },
+  mapFallback: { fontSize: 13, color: "#666" },
+  linkButton: { paddingVertical: 8 },
+  linkButtonText: { color: "#1a73e8", fontWeight: "600" },
+  actionsRow: { flexDirection: "row", gap: 12, marginTop: 4 },
+  saveButton: {
+    flex: 1,
+    backgroundColor: "#1a73e8",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  saveButtonText: { color: "white", fontWeight: "700", fontSize: 16 },
+  deleteButton: {
+    backgroundColor: "#e53935",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  deleteButtonText: { color: "white", fontWeight: "700" },
   title: { fontSize: 22, fontWeight: "600" },
-  body: { fontSize: 16, color: "#444" },
 });
