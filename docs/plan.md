@@ -126,8 +126,8 @@ type Item = {
 
 **Phase 3 — Search**
 
-- Search by label/note (SQLite LIKE).
-- Basic UX polish.
+- Search by label/note (SQLite LIKE, case-insensitive) with Home search bar.
+- Basic UX polish: a11y labels, error surface, unsaved-edit confirm on Detail.
 - **Commit**.
 
 **Phase 4 — iPhone sideloading loop (free Apple ID)**

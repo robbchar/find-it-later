@@ -1,11 +1,12 @@
 import type { Item } from "../models/Item";
-import { clearItems, deleteItem, getItem, listItems } from "../storage/items";
+import { clearItems, deleteItem, getItem, listItems, searchItems } from "../storage/items";
 
 type DebugApi = {
   list: () => Promise<Item[]>;
   get: (id: string) => Promise<Item | null>;
   delete: (id: string) => Promise<void>;
   clear: () => Promise<void>;
+  search: (term: string) => Promise<Item[]>;
 };
 
 declare global {
@@ -19,6 +20,7 @@ export function attachFindItLaterDebug(): void {
     get: getItem,
     delete: deleteItem,
     clear: clearItems,
+    search: searchItems,
   };
   globalThis.findItLaterDebug = api;
   // eslint-disable-next-line no-console

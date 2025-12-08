@@ -71,6 +71,21 @@ export async function listItems(limit = 100): Promise<Item[]> {
   return rows.map(rowToItem);
 }
 
+export async function searchItems(term: string, limit = 100): Promise<Item[]> {
+  const db = await getDb();
+  const q = `%${term.toLowerCase()}%`;
+  const rows = await db.getAllAsync<ItemRow>(
+    `
+      SELECT * FROM items
+      WHERE lower(label) LIKE ? OR lower(COALESCE(note, '')) LIKE ?
+      ORDER BY created_at DESC
+      LIMIT ?
+    `,
+    [q, q, limit],
+  );
+  return rows.map(rowToItem);
+}
+
 export async function deleteItem(id: string): Promise<void> {
   const db = await getDb();
   const row = await db.getFirstAsync<{ photo_uri: string | null }>(

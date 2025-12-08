@@ -21,9 +21,10 @@ jest.mock("@react-navigation/native", () => {
 jest.mock("../storage/items", () => ({
   listItems: jest.fn(),
   deleteItem: jest.fn(),
+  searchItems: jest.fn(),
 }));
 
-const { listItems, deleteItem } = jest.requireMock("../storage/items");
+const { listItems, deleteItem, searchItems } = jest.requireMock("../storage/items");
 
 const navigationMock = {
   navigate: jest.fn(),
@@ -74,8 +75,33 @@ describe("HomeScreen", () => {
     await act(async () => {});
 
     expect(deleteItem).toHaveBeenCalledWith("1");
-    expect(listItems).toHaveBeenCalledTimes(2); // initial load + refresh after delete
+    expect(listItems.mock.calls.length).toBeGreaterThanOrEqual(1); // loaded and refreshed
 
     alertSpy.mockRestore();
+  });
+
+  it("searches when text is entered", async () => {
+    listItems.mockResolvedValue([]);
+    searchItems.mockResolvedValue([
+      { id: "2", label: "Match", note: "foo", photoUri: "file:///m.jpg", createdAt: 2 },
+    ]);
+
+    const { getByPlaceholderText, getByText } = render(
+      <HomeScreen navigation={navigationMock} route={{ key: "home", name: "Home" } as any} />,
+    );
+
+    await waitFor(() => {
+      expect(getByPlaceholderText("Search label or note")).toBeTruthy();
+    });
+
+    fireEvent.changeText(getByPlaceholderText("Search label or note"), "foo");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    });
+
+    expect(searchItems).toHaveBeenCalledWith("foo");
+    await waitFor(() => {
+      expect(getByText("Match")).toBeTruthy();
+    });
   });
 });

@@ -1,5 +1,7 @@
+import { HeaderBackButton } from "@react-navigation/elements";
+import { usePreventRemove, StackActions, CommonActions } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -45,27 +47,100 @@ function buildStaticMapUrl(lat: number, lon: number, apiKey?: string): string | 
 
 function openInMaps(lat: number, lon: number) {
   const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
-  Linking.openURL(url);
+  Linking.openURL(url).catch(() => {});
 }
 
 export function DetailScreen({ route, navigation }: Props) {
   const { itemId } = route.params;
   const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [label, setLabel] = useState("");
   const [note, setNote] = useState("");
+  const originalLabel = useRef("");
+  const originalNote = useRef("");
+  const ignoreUnsaved = useRef(false);
+  const blockedAction = useRef<any>(null);
 
   useEffect(() => {
     const load = async () => {
-      const record = await getItem(itemId);
-      setItem(record);
-      setLabel(record?.label ?? "");
-      setNote(record?.note ?? "");
-      setLoading(false);
+      try {
+        setLoadingError(null);
+        const record = await getItem(itemId);
+        setItem(record);
+        setLabel(record?.label ?? "");
+        setNote(record?.note ?? "");
+        originalLabel.current = record?.label?.trim() ?? "";
+        originalNote.current = record?.note?.trim() ?? "";
+      } catch (err) {
+        console.error(err);
+        setLoadingError("Could not load item");
+      } finally {
+        setLoading(false);
+      }
     };
-    load();
+    load().catch(() => {});
   }, [itemId]);
+
+  const hasUnsavedChanges =
+    label.trim() !== originalLabel.current || (note.trim() || "") !== (originalNote.current || "");
+
+  const confirmDiscard = useCallback((onDiscard: () => void) => {
+    Alert.alert("Discard changes?", "You have unsaved edits.", [
+      {
+        text: "Stay",
+        style: "cancel",
+        onPress: () => {
+          blockedAction.current = null;
+        },
+      },
+      {
+        text: "Discard",
+        style: "destructive",
+        onPress: () => {
+          ignoreUnsaved.current = true;
+          onDiscard();
+        },
+      },
+    ]);
+  }, []);
+
+  const handleBackPress = useCallback(() => {
+    if (!hasUnsavedChanges) {
+      navigation.goBack();
+      return;
+    }
+    navigation.dispatch(CommonActions.goBack());
+  }, [confirmDiscard, hasUnsavedChanges, navigation]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: (props) => (
+        <HeaderBackButton {...props} onPress={handleBackPress} tintColor={props.tintColor} />
+      ),
+    });
+  }, [navigation, handleBackPress]);
+
+  usePreventRemove(hasUnsavedChanges, (event) => {
+    if (!hasUnsavedChanges || ignoreUnsaved.current) {
+      return;
+    }
+
+    const preventDefault = (event as { preventDefault?: () => void }).preventDefault;
+    preventDefault?.();
+    blockedAction.current = (event as { data?: { action?: any } }).data?.action ?? null;
+    confirmDiscard(() => {
+      ignoreUnsaved.current = true;
+      const action = blockedAction.current;
+      blockedAction.current = null;
+      if (action) {
+        navigation.dispatch(action);
+      } else {
+        navigation.dispatch(StackActions.pop(1));
+      }
+    });
+  });
 
   const staticMapKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_STATIC_KEY;
   const staticMapUrl = useMemo(
@@ -81,6 +156,8 @@ export function DetailScreen({ route, navigation }: Props) {
       await updateItem({ id: item.id, label: label.trim(), note: note.trim() || undefined });
       const refreshed = await getItem(item.id);
       setItem(refreshed);
+      originalLabel.current = label.trim();
+      originalNote.current = note.trim();
       Alert.alert("Saved", "Item updated.");
     } catch (error) {
       console.error(error);
@@ -97,6 +174,7 @@ export function DetailScreen({ route, navigation }: Props) {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
+          ignoreUnsaved.current = true;
           await deleteItem(itemId);
           navigation.goBack();
         },
@@ -115,7 +193,7 @@ export function DetailScreen({ route, navigation }: Props) {
   if (!item) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.title}>Item not found</Text>
+        <Text style={styles.title}>{loadingError ?? "Item not found"}</Text>
         <Button
           title="Go back"
           onPress={() => {
@@ -172,6 +250,8 @@ export function DetailScreen({ route, navigation }: Props) {
               openInMaps(item.location!.lat, item.location!.lon);
             }}
             style={styles.linkButton}
+            accessibilityRole="button"
+            accessibilityLabel="Open location in Maps"
           >
             <Text style={styles.linkButtonText}>Open in Maps</Text>
           </TouchableOpacity>
