@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,8 +18,11 @@ import {
 import "react-native-get-random-values";
 import { v4 as uuidv4 } from "uuid";
 
+import { RoomPickerModal } from "../components/RoomPickerModal";
+import type { Room } from "../models/Room";
 import type { RootStackParamList } from "../navigation/types";
 import { insertItem, updateItemLocation } from "../storage/items";
+import { createRoom, listRooms, renameRoom, deleteRoom } from "../storage/rooms";
 import { persistPhoto } from "../utils/photoStorage";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Capture">;
@@ -32,6 +35,15 @@ export function CaptureScreen({ navigation }: Props) {
   const [label, setLabel] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [roomPickerVisible, setRoomPickerVisible] = useState(false);
+
+  useEffect(() => {
+    listRooms()
+      .then(setRooms)
+      .catch(() => {});
+  }, []);
 
   const takePhoto = useCallback(async () => {
     if (!cameraRef.current) return;
@@ -93,11 +105,13 @@ export function CaptureScreen({ navigation }: Props) {
         note: note.trim() ? note.trim() : undefined,
         photoUri: storedPhotoUri,
         createdAt: Date.now(),
+        roomId: selectedRoomId ?? undefined,
       });
       setSaving(false);
       setCapturedUri(null);
       setLabel("");
       setNote("");
+      setSelectedRoomId(null);
       await promptForLocation(id);
       navigation.goBack();
     } catch (error) {
@@ -158,6 +172,21 @@ export function CaptureScreen({ navigation }: Props) {
             style={[styles.input, styles.inputMultiline]}
             multiline
           />
+          <TouchableOpacity
+            style={styles.roomSelector}
+            onPress={() => {
+              setRoomPickerVisible(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Select room"
+          >
+            <Text style={styles.roomSelectorLabel}>
+              {selectedRoomId
+                ? (rooms.find((r) => r.id === selectedRoomId)?.name ?? "Room")
+                : "No room selected"}
+            </Text>
+            <Text style={styles.roomSelectorAction}>Change</Text>
+          </TouchableOpacity>
           <View style={styles.row}>
             <Button
               title="Retake"
@@ -174,17 +203,46 @@ export function CaptureScreen({ navigation }: Props) {
   }
 
   return (
-    <View style={styles.cameraContainer}>
-      <CameraView style={styles.camera} ref={cameraRef} />
-      <View style={styles.cameraControls}>
-        <TouchableOpacity
-          onPress={takePhoto}
-          accessibilityRole="button"
-          accessibilityLabel="Take photo"
-          style={styles.shutterButton}
-        />
+    <>
+      <View style={styles.cameraContainer}>
+        <CameraView style={styles.camera} ref={cameraRef} />
+        <View style={styles.cameraControls}>
+          <TouchableOpacity
+            onPress={takePhoto}
+            accessibilityRole="button"
+            accessibilityLabel="Take photo"
+            style={styles.shutterButton}
+          />
+        </View>
       </View>
-    </View>
+      <RoomPickerModal
+        visible={roomPickerVisible}
+        rooms={rooms}
+        selectedRoomId={selectedRoomId}
+        onSelect={(id) => {
+          setSelectedRoomId(id);
+          setRoomPickerVisible(false);
+        }}
+        onCreate={async (name) => {
+          const room = await createRoom(name);
+          const next = [...rooms, room];
+          setRooms(next);
+          setSelectedRoomId(room.id);
+        }}
+        onRename={async (id, name) => {
+          await renameRoom(id, name);
+          setRooms((prev) => prev.map((r) => (r.id === id ? { ...r, name } : r)));
+        }}
+        onDelete={async (id) => {
+          await deleteRoom(id);
+          setRooms((prev) => prev.filter((r) => r.id !== id));
+          if (selectedRoomId === id) setSelectedRoomId(null);
+        }}
+        onRequestClose={() => {
+          setRoomPickerVisible(false);
+        }}
+      />
+    </>
   );
 }
 
@@ -222,6 +280,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
+  roomSelector: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  roomSelectorLabel: { fontSize: 16, color: "#333" },
+  roomSelectorAction: { color: "#1a73e8", fontWeight: "600" },
   centered: {
     flex: 1,
     padding: 24,
