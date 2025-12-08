@@ -14,7 +14,11 @@ export function AppNavigator() {
       <Stack.Navigator initialRouteName="Home">
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: "Find it later" }} />
         <Stack.Screen name="Capture" component={CaptureScreen} options={{ title: "Add item" }} />
-        <Stack.Screen name="Detail" component={DetailScreen} options={{ title: "Item details" }} />
+        <Stack.Screen
+          name="Detail"
+          component={DetailScreen}
+          options={{ title: "Item details", headerBackButtonMenuEnabled: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

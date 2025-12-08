@@ -13,7 +13,21 @@ const { getItem, updateItem, deleteItem } = jest.requireMock("../storage/items")
 
 const navigationMock = {
   goBack: jest.fn(),
+  dispatch: jest.fn(),
+  setOptions: jest.fn(),
 } as any;
+
+jest.mock("@react-navigation/native", () => {
+  const actual = jest.requireActual("@react-navigation/native");
+  return {
+    ...actual,
+    usePreventRemove: (enabled: boolean, listener: any) => {
+      if (enabled) {
+        listener({ data: { action: { type: "GO_BACK" } }, preventDefault: jest.fn() });
+      }
+    },
+  };
+});
 
 const baseItem = {
   id: "1",
